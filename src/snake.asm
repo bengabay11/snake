@@ -1,59 +1,72 @@
-.286
+.286P
 IDEAL
+%TITLE "Snake"
 MODEL small
 STACK 100h
+
+; ----------------- Snake -----------------
+; TASM Syntax
+; Snake game written in assembly by Ben Gabay
+
+
 MAX_BMP_WIDTH = 320
 MAX_BMP_HEIGHT = 200
 SMALL_BMP_HEIGHT = 40
 SMALL_BMP_WIDTH = 40
 
 DATASEG
-	newhigh db 0
-	high_m db 'Best score: ', 10, 13,'$' 
+	; Messsages
 	messege_score db 'SCORE: ', 10, 13,'$' 
 	messege_score2 db 'Your score is: ', 10, 13,'$' 
-	score db 0
-    apple2 db 0
-    random_number db 0
-	random_number2 db 0
-    right2 db 0
+	BmpFileErrorMsg db 'Error At Opening Bmp File .', 0dh, 0ah,'$'
+	HighscoreMessage db 'Best score: ', 10, 13,'$' 
+	
+	; Game
+	x dw 160
+	y dw 100
+	apple2 db 0
+	
+	;Snake Movement
+	right2 db 0
 	left2 db 0
 	down2 db 0
 	up2 db 0
-    backto db 0
-	backto2 db 0
-	returnaddress dw ?
-	Clock equ es:6ch
-	OneBmpLine 	db MAX_BMP_WIDTH dup (0)  ; One Color line read buffer
-    ScreenLineMax 	db MAX_BMP_WIDTH dup (0)  ; One Color line read buffer
-	;BMP File data
+	
+	; BMP File data
 	FileHandle	dw ?
-	Header 	    db 54 dup(0)
-	Palette 	db 400h dup (0)
-	picture db '../images/menu1.bmp',0
-	picture2 db '../images/loading.bmp', 0
-	picture21 db '../images/load2.bmp', 0
-	picture22 db '../images/load3.bmp', 0
-	picture3 db '../images/instruc.bmp',0
-	picture4 db '../images/gameov.bmp',0
-	picture5 db '../images/thank.bmp',0
-	picture6 db '../images/highsc.bmp',0
-	picture7 db '../images/winner.bmp',0
-	BmpFileErrorMsg    	db 'Error At Opening Bmp File .', 0dh, 0ah,'$'
-	ErrorFile           db 0
-    BB db "BB..",'$'	 
+	Header db 54 dup(0)
+	Palette db 400h dup (0)
 	BmpLeft dw ?
 	BmpTop dw ?
 	BmpColSize dw ?
-	BmpRowSize dw ?	 
-	x dw 160
-	y dw 100
+	BmpRowSize dw ?	
+	OneBmpLineOneBmpLine db MAX_BMP_WIDTH dup (0)  ; One Color line read buffer
+    ScreenLineMax db MAX_BMP_WIDTH dup (0)  ; One Color line read buffer	
+	
+	; Images
+	menu_image db 'snake/images/Menu.bmp',0
+	loading1_image db 'snake/images/Loading1.bmp', 0
+	loading2_image db 'snake/images/Loading2.bmp', 0
+	loading3_image db 'snake/images/Loading3.bmp', 0
+	instructions_image db 'snake/images/Instructions.bmp',0
+	game_over_image db 'snake/images/GameOver.bmp',0
+	quit_image db 'snake/images/Quit.bmp',0
+	highscore_image db 'snake/images/HighScore.bmp',0
+	win_image db 'snake/images/Win.bmp',0
+	
+	newhigh db 0
+	score db 0
+    random_number db 0
+	random_number2 db 0
+    backto db 0
+	returnaddress dw ?
+	Clock equ es:6ch
+	ErrorFile db 0
 	color db ?
 	
 CODESEG
 
-;The procedure prints bmp file to the screen.
-proc OpenShowBmp near
+proc ShowBmp near
 	push cx
 	push bx
 	call OpenBmpFile
@@ -68,9 +81,9 @@ proc OpenShowBmp near
 	pop bx
 	pop cx
 	ret
-endp OpenShowBmp
+endp ShowBmp
 	
-proc OpenBmpFile	near						 
+proc OpenBmpFile near						 
 	mov ah, 3Dh
 	xor al, al
 	int 21h
@@ -126,7 +139,7 @@ proc CopyBmpPalette near
 	inc dx	  ;3C9h
 CopyNextColor:
 	mov al,[si+2] ; Red				
-	shr al,2 ; divide by 4 Max (cos max is 63 and we have here max 255 ) (loosing color resolution).				
+	shr al,2 ; divide by 4 Max (cos max is 63 and we have here max 255 ) (loosing color resolution)		
 	out dx,al 						
 	mov al,[si+1] ; Green.				
 	shr al,2            
@@ -178,7 +191,8 @@ proc ShowBMP
 	ret
 endp ShowBMP 
 
-proc  SetGraphic; Change to graphic mode and clear the screen.
+; Change to graphic mode and clear the screen
+proc  SetGraphic
     push ax
 	mov ax,13h   
 	int 10h
@@ -186,7 +200,7 @@ proc  SetGraphic; Change to graphic mode and clear the screen.
 	ret
 endp SetGraphic
 
-; The procedure waits 0.5 seconds.
+; Wait 0.5 seconds
 proc Timer
     pusha
     mov ax, 40h
@@ -206,21 +220,21 @@ Tick:
     ret 
 endp Timer
 
-; The procedure prints an image with the highscore of the player.
+; Prints an image with the highscore of the player
 proc highscore
 	pusha
 	mov [BmpLeft],0
 	mov [BmpTop],0
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
-	mov dx,offset picture6
-	call OpenShowBmp
+	mov dx,offset highscore_image
+	call ShowBmp
 	mov dl, 11
 	mov dh, 4
 	mov bx, 0
 	mov ah, 2
 	int 10h
-	mov dx, offset high_m
+	mov dx, offset HighscoreMessage
 	mov ah, 9h
 	int 21h
 	mov dl, 24
@@ -232,7 +246,7 @@ proc highscore
     add dl, 30h 
     mov ah, 2
     int 21h
-enterchar2: ;  Input for exit.
+enterchar2: ; Input for exit.
 	mov dl, 0
 	mov dh, 0
 	mov bx, 0
@@ -247,8 +261,8 @@ jne enterchar2
 	ret
 endp highscore
 
-; The procedure checks whether the score reach 9 points. if it does, it informs accordingly.
-proc point_under_9;בודק האם הניקוד הגיע ל-9 ואם כן מודיע בהתאם
+; Checks whether the score reach 9 points. if it does, it shows the win image
+proc point_under_9
 	pusha
 	cmp [score], 9
 	jb under_9
@@ -256,8 +270,8 @@ proc point_under_9;בודק האם הניקוד הגיע ל-9 ואם כן מוד
 	mov [BmpTop],0
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
-	mov dx,offset picture7
-	call OpenShowBmp
+	mov dx,offset win_image
+	call ShowBmp
 enterchar3: ;Input for exit.
 	mov dl, 0
 	mov dh, 0
@@ -274,16 +288,16 @@ under_9:
 	ret
 endp point_under_9
 
-; Prints the instructions of the game.
+; Prints the instructions of the game
 proc instructions
     pusha
 	mov [BmpLeft],0
 	mov [BmpTop],0
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
-	mov dx,offset picture3
-	call OpenShowBmp 
-enterchar: ; Input for exit.
+	mov dx,offset instructions_image
+	call ShowBmp 
+enterchar: ; Input for exit
 	mov dl, 0
 	mov dh, 0
 	mov bx, 0
@@ -298,7 +312,7 @@ enterchar: ; Input for exit.
     ret
 endp instructions
 
-; Prints pixel to the screen.
+; Prints pixel to the screen
 proc pixel
     pusha
     mov bh,0h
@@ -311,8 +325,8 @@ proc pixel
     ret
 endp pixel
 
-; The procedure checks the color of the pixel, and puts his value in AL. 
-proc check_pixel_green; AL בודקת את צבע הפיקסל ומכניסה את ערכו לרגיסטר
+; Checks the color of the pixel, and puts his value in AL
+proc check_pixel_green
     pusha
 	mov bh,0h
     mov cx,[x]
@@ -327,7 +341,7 @@ ex1:
 	ret
 endp check_pixel_green
 
-; The procedure checks if all the pixels on the frame changed to green, and finish the game if it does.
+; Checks if all the pixels on the frame changed to green, and finish the game if it does
 proc check_frame
     pusha
 	mov [x], 10
@@ -356,8 +370,8 @@ shc15:
 	ret
 endp check_frame
 
-; The procedure draws a horizontal rectangle.
-proc oblongHorizontal
+; Draw horizontal rectangle
+proc horizontal_oblong
     pusha
 	mov ax, 5
 shc1:
@@ -376,10 +390,10 @@ shc2:
 	sub [y], 5
 	popa
     ret
-endp oblongHorizontal
+endp horizontal_oblong
 
-; The procedure draws a vertical rectangle.
-proc oblongvertical
+; Draw vertical rectangle
+proc vertical_oblong
     pusha
 	mov ax, 5
 shc3:
@@ -398,9 +412,9 @@ shc4:
 	sub [x], 5
 	popa
     ret
-endp oblongvertical
+endp vertical_oblong
 
-; The procedure draws an appple (5X5 red pixels)
+; Draw an appple (5X5 red pixels)
 proc apple
     pusha
 	mov ax, 5
@@ -423,7 +437,7 @@ shc6:
     ret
 endp apple
 
-; The procedure clear a vertical rectangle.
+; Clear a vertical rectangle
 proc clear_oblong_vertical
     pusha
 	mov [color], 0
@@ -432,7 +446,7 @@ proc clear_oblong_vertical
 	ret
 endp clear_oblong_vertical
 
-; The procedure clear a horizontal rectangle.
+; Clear a horizontal rectangle
 proc clear_oblong_horizontal
     pusha
 	mov [color], 0
@@ -441,7 +455,7 @@ proc clear_oblong_horizontal
 	ret
 endp clear_oblong_horizontal
 
-; The procedure draws a blue frame.
+; Draw a blue frame
 proc frame
     pusha
 	mov [color], 1
@@ -473,8 +487,8 @@ shc11:
     ret
 endp frame
 
-; The procedure prints an image before the game starts.
-proc gamemessege
+; Prints loading images before the game starts
+proc loading_messages
     pusha
 	mov cx, 2
 loading:
@@ -482,8 +496,8 @@ loading:
 	mov [BmpTop],0
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
-	mov dx,offset picture22
-	call OpenShowBmp 
+	mov dx,offset loading3_image
+	call ShowBmp 
 	call Timer
 	call Timer
 	call Timer
@@ -492,8 +506,8 @@ loading:
 	mov [BmpTop],0
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
-	mov dx,offset picture21
-	call OpenShowBmp
+	mov dx,offset loading2_image
+	call ShowBmp
 	call Timer
 	call Timer
 	call Timer
@@ -507,8 +521,8 @@ beinaim2:
 	mov [BmpTop],0
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
-	mov dx,offset picture2
-	call OpenShowBmp 
+	mov dx,offset loading1_image
+	call ShowBmp 
 	call Timer
 	call Timer
 	call Timer
@@ -518,14 +532,14 @@ end_messege:
 	call SetGraphic
     popa
     ret
-endp gamemessege
+endp loading_messages
 
-; The procedure draws the snake up.
+; Moves the snake up
 proc up
     pusha
 	mov [color], 2
     sub [y], 5
-	call oblongvertical
+	call vertical_oblong
 	mov cx, [y]
 	mov bx, [x]
 	call check_frame
@@ -535,12 +549,12 @@ proc up
 	ret
 endp up
 
-; The procedure draws the snake down.
+; Moves the snake down
 proc down
     pusha
 	mov [color], 2
 	add [y], 5
-	call oblongvertical
+	call vertical_oblong
 	mov cx, [y]
 	mov bx, [x]
 	call check_frame
@@ -550,12 +564,12 @@ proc down
 	ret
 endp down
 
-; The procedure draws the snake right.
+; Moves the snake right
 proc right
     pusha
 	mov [color], 2
 	add [x], 5
-	call oblongHorizontal
+	call horizontal_oblong
 	mov cx, [y]
 	mov bx, [x]
 	call check_frame
@@ -565,12 +579,12 @@ proc right
     ret
 endp right
 
-; The procedure draws the snake left.
+; Moves the snake left
 proc left
     pusha
 	mov [color], 2
 	sub [x], 5
-	call oblongHorizontal
+	call horizontal_oblong
 	mov cx, [y]
 	mov bx, [x]
 	call check_frame
@@ -580,7 +594,7 @@ proc left
 	ret
 endp left
 
-; The procedure fix the snake movement to go up.
+; Fix the snake movement to go up
 proc fix_up
 	pusha
 	cmp [right2], 1
@@ -598,7 +612,7 @@ u2:
 	ret
 endp fix_up
 
-; The procedure fix the snake movement to go down.
+; Fix the snake movement to go down
 proc fix_down
     pusha
 	cmp [right2], 1
@@ -610,7 +624,7 @@ d1:
 	ret
 endp fix_down
 
-; The procedure fix the snake movement to go right.
+; Fix the snake movement to go right
 proc fix_right
     pusha 
 	cmp [down2], 1
@@ -622,7 +636,7 @@ r1:
 	ret
 endp fix_right
 
-; The procedure fix the snake movement to go left.		 
+; Fix the snake movement to go left.
 proc fix_left	
     pusha
 	cmp [up2], 1
@@ -641,7 +655,7 @@ l2:
 	ret
 endp fix_left
 
-; The procedure checks whether the player disqalified. if he does, the procedure the scoore of the player.
+; Checks whether the player disqalified. if he does, the procedure show the relevant message
 proc print_score_game_over
 	pusha
 	mov dl, 11
@@ -665,7 +679,7 @@ proc print_score_game_over
 	ret
 endp print_score_game_over
 
-; The procedure prints the current score of the player in the left side down.
+; Prints the current score of the player in the left side down
 proc print_score
 	pusha
 	mov dl, 4
@@ -689,7 +703,7 @@ proc print_score
 	ret
 endp print_score
 
-; The procedure checks the snake's movement and clean it accordingly. 
+; Checks the snake's movement and clean it accordingly
 proc main_clear
     pusha
 	cmp [up2], 1
@@ -712,7 +726,7 @@ clear4:
 	ret
 endp main_clear
 
-; The procedure prints the apple randomly.
+; Prints the apple randomly
 proc random_apple
     pusha
 	mov [color], 4
@@ -730,8 +744,8 @@ proc random_apple
 	ret
 endp random_apple
 
-
-proc check_pixel_green2;בודק האם הפיקס בצבע ירוק
+; Check if the pixel is green
+proc check_pixel_green2
 	pusha
 	mov bh,0h
     mov cx,[x]
@@ -746,7 +760,7 @@ green:
 	ret
 endp check_pixel_green2
 
-; The procedure checks if the apple eaten by.
+; Checks if the apple eaten by the snake
 proc check_apple
 	pusha
 	xor ah, ah
@@ -776,7 +790,7 @@ shc66:
     ret
 endp check_apple
 
-; The procedure delets the apple.
+; Delets the apple
 proc delet_apple
     pusha
 	mov [color], 0
@@ -792,8 +806,8 @@ proc delet_apple
 	ret
 endp delet_apple
 
-; The procedure is incharge of the snake's movement.
-proc movement;אחראית לתזוזת הנחש
+; The procedure is incharge of the snake's movement
+proc movement
     pusha
 	cmp [up2], 1
 	jne lbb1
@@ -815,10 +829,9 @@ lbb4:
 	ret
 endp movement
 
-; The main procedure of the game.
 proc play
     pusha
-	call gamemessege
+	call loading_messages
     call frame
 	mov [color], 2
 	call oblongHorizontal
@@ -855,16 +868,16 @@ not_eat_by_snake:
 	mov [y], bx
 	call point_under_9
 	call main_clear
-; Checks if a key was pressed
+	; Checks if a key was pressed
 	in al, 64h ; Read keyboard status port
     cmp al, 10b ; Data in buffer ?
 	je lb1 ; if no key was pressed, repeat
-; Gets the pressed key
+	; Gets the pressed key
     in al, 60h ; Get keyboard data
-; AL = scan code pressed key
-	cmp al, 48h ; Checks if key up is pressed.
+	; AL = scan code pressed key
+	cmp al, 48h ; Checks if key up is pressed
 	jne lb2
-	cmp [down2], 1 ; Checks whether the snake is on his way down, and if it does, the program prevent it from going up.
+	cmp [down2], 1 ; Checks whether the snake is on his way down, and if it does, the program prevent it from going up
 	je lb2
 	call fix_up
 	mov [right2], 0
@@ -876,9 +889,9 @@ not_eat_by_snake:
 	call clear_oblong_vertical
 	jmp looplabe2
 lb2:
-    cmp al, 4Bh ; Checks if key left is pressed.
+    cmp al, 4Bh ; Checks if key left is pressed
 	jne lb3
-	cmp [right2], 1 ; Checks whether the snake is on his way right, and if it does, the program prevent it from going left.
+	cmp [right2], 1 ; Checks whether the snake is on his way right, and if it does, the program prevent it from going left
 	je lb3
     call fix_left
 	mov [down2], 0
@@ -890,9 +903,9 @@ lb2:
 	call clear_oblong_horizontal
 	jmp looplabe2
 lb3:
-	cmp al, 50h ; Checks if key down is pressed.
+	cmp al, 50h ; Checks if key down is pressed
 	jne lb4
-	cmp [up2], 1 ; Checks whether the snake is on his way up, and if it does, the program prevent it from going down.
+	cmp [up2], 1 ; Checks whether the snake is on his way up, and if it does, the program prevent it from going down
 	je lb4
 	call fix_down
 	mov [right2], 0
@@ -907,9 +920,9 @@ shortcut:
 shortcut2:
 	jmp check_score
 lb4:
-	cmp al, 4dh ; Checks if key right is pressed.
+	cmp al, 4dh ; Checks if key right is pressed
 	jne lb5
-	cmp [left2], 1 ; Checks whether the snake is on his way left, and if it does, the program prevent it from going right.
+	cmp [left2], 1 ; Checks whether the snake is on his way left, and if it does, the program prevent it from going right
 	je lb5
 	call fix_right
 	mov [up2], 0
@@ -921,12 +934,12 @@ lb4:
 	call clear_oblong_horizontal
 	jmp looplabe2
 lb5:
-    cmp al, 12h ; Check if 'e' is pressed, and if it does, the program goes back to the main menu.
+    cmp al, 12h ; Check if 'e' is pressed, and if it does, the program goes back to the main menu
 	jne shortcut
     mov [backto], 1
 	jmp lb7
 lb6:
-	call point_under_9 ; Reset the movement variables at the end of the game.
+	call point_under_9 ; Reset the movement variables at the end of the game
 	cmp [backto], 1
 	je lb7
 	jne shortcut2
@@ -939,15 +952,14 @@ lb7:
     ret
 endp play
 
-; The procedure prints an image for the end of the game.
 proc game_over
     pusha
     mov [BmpLeft],0
 	mov [BmpTop],0
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
-	mov dx,offset picture4
-	call OpenShowBmp
+	mov dx,offset game_over_image
+	call ShowBmp
 	call print_score_game_over
     mov cx, 25
 wait_3_sec:	
@@ -997,7 +1009,7 @@ start:
 	call SetGraphic 
 menu1:
     mov al, [score]
-	cmp al, [newhigh] ; Compare between the highscore and the current score. 
+	cmp al, [newhigh] ; Compare between the highscore and the current score
 	ja newhighscore
 menu2:
     mov [score], 0
@@ -1006,8 +1018,8 @@ menu2:
 	mov [BmpTop],0
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
-	mov dx,offset picture
-	call OpenShowBmp 
+	mov dx,offset menu_image
+	call ShowBmp 
 	mov dl, 0
 	mov dh, 0
 	mov bx, 0
@@ -1025,7 +1037,7 @@ menu2:
 	je label_3
 	jne menu1
 newhighscore:
-	mov [newhigh], al ; Insert the current score to the highscore variable.
+	mov [newhigh], al ; Insert the current score to the highscore variable
 	jmp menu2
 label_1:
     call play
@@ -1039,13 +1051,13 @@ label_3:
     call highscore
 	cmp [backto], 1
 	je menu1
-befor_exit: ; Prints an image when the player exit the game.
+befor_exit: ; Prints an image when the player exit the game
     mov [BmpLeft],0
 	mov [BmpTop],0
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
-	mov dx,offset picture5
-	call OpenShowBmp 
+	mov dx,offset quit_image
+	call ShowBmp
     mov cx, 20
 wait_2_seco:
 	call Timer
