@@ -15,6 +15,7 @@ cd bin
 cycles=max
 tasm /zi snake\src\snake.asm
 tlink /v snake\src\snake.obj
+cd snake\src
 snake
 ```
 
