@@ -1,7 +1,7 @@
+.286
 IDEAL
 MODEL small
 STACK 100h
-p186
 MAX_BMP_WIDTH = 320
 MAX_BMP_HEIGHT = 200
 SMALL_BMP_HEIGHT = 40
@@ -30,15 +30,15 @@ DATASEG
 	FileHandle	dw ?
 	Header 	    db 54 dup(0)
 	Palette 	db 400h dup (0)
-	picture db 'menu1.bmp',0
-	picture2 db 'loading.bmp', 0
-	picture21 db 'load2.bmp', 0
-	picture22 db 'load3.bmp', 0
-	picture3 db 'instruc.bmp',0
-	picture4 db 'gameov.bmp',0
-	picture5 db 'thank.bmp',0
-	picture6 db 'highsc.bmp',0
-	picture7 db 'winner.bmp',0
+	picture db '../images/menu1.bmp',0
+	picture2 db '../images/loading.bmp', 0
+	picture21 db '../images/load2.bmp', 0
+	picture22 db '../images/load3.bmp', 0
+	picture3 db '../images/instruc.bmp',0
+	picture4 db '../images/gameov.bmp',0
+	picture5 db '../images/thank.bmp',0
+	picture6 db '../images/highsc.bmp',0
+	picture7 db '../images/winner.bmp',0
 	BmpFileErrorMsg    	db 'Error At Opening Bmp File .', 0dh, 0ah,'$'
 	ErrorFile           db 0
     BB db "BB..",'$'	 
