@@ -4,8 +4,10 @@ MODEL small
 STACK 100h
 
 ; ----------------- Snake -----------------
-; TASM Syntax
 ; Snake game written in assembly by Ben Gabay
+; TASM Syntax
+; 32-bit x86 - DOS
+; -----------------------------------------
 
 
 MAX_BMP_WIDTH = 320
@@ -57,7 +59,7 @@ DATASEG
 	score db 0
 	random_number db 0
 	random_number2 db 0
-    backto db 0
+	backto db 0
 	returnaddress dw ?
 	Clock equ es:6ch
 	ErrorFile db 0
