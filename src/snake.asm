@@ -1,6 +1,5 @@
 .286P
 IDEAL
-%TITLE "Snake"
 MODEL small
 STACK 100h
 
@@ -41,7 +40,7 @@ DATASEG
 	BmpColSize dw ?
 	BmpRowSize dw ?	
 	OneBmpLineOneBmpLine db MAX_BMP_WIDTH dup (0)  ; One Color line read buffer
-    ScreenLineMax db MAX_BMP_WIDTH dup (0)  ; One Color line read buffer	
+	ScreenLineMax db MAX_BMP_WIDTH dup (0)  ; One Color line read buffer	
 	
 	; Images
 	menu_image db 'snake/images/Menu.bmp',0
@@ -56,7 +55,7 @@ DATASEG
 	
 	newhigh db 0
 	score db 0
-    random_number db 0
+	random_number db 0
 	random_number2 db 0
     backto db 0
 	returnaddress dw ?
@@ -66,7 +65,7 @@ DATASEG
 	
 CODESEG
 
-proc ShowBmp near
+proc PrintImage near
 	push cx
 	push bx
 	call OpenBmpFile
@@ -81,7 +80,7 @@ proc ShowBmp near
 	pop bx
 	pop cx
 	ret
-endp ShowBmp
+endp PrintImage
 	
 proc OpenBmpFile near						 
 	mov ah, 3Dh
@@ -228,7 +227,7 @@ proc highscore
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
 	mov dx,offset highscore_image
-	call ShowBmp
+	call PrintImage
 	mov dl, 11
 	mov dh, 4
 	mov bx, 0
@@ -271,7 +270,7 @@ proc point_under_9
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
 	mov dx,offset win_image
-	call ShowBmp
+	call PrintImage
 enterchar3: ;Input for exit.
 	mov dl, 0
 	mov dh, 0
@@ -296,7 +295,7 @@ proc instructions
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
 	mov dx,offset instructions_image
-	call ShowBmp 
+	call PrintImage 
 enterchar: ; Input for exit
 	mov dl, 0
 	mov dh, 0
@@ -441,7 +440,7 @@ endp apple
 proc clear_oblong_vertical
     pusha
 	mov [color], 0
-	call oblongvertical
+	call vertical_oblong
 	popa
 	ret
 endp clear_oblong_vertical
@@ -450,7 +449,7 @@ endp clear_oblong_vertical
 proc clear_oblong_horizontal
     pusha
 	mov [color], 0
-	call oblongHorizontal
+	call horizontal_oblong
 	popa
 	ret
 endp clear_oblong_horizontal
@@ -497,7 +496,7 @@ loading:
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
 	mov dx,offset loading3_image
-	call ShowBmp 
+	call PrintImage 
 	call Timer
 	call Timer
 	call Timer
@@ -507,7 +506,7 @@ loading:
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
 	mov dx,offset loading2_image
-	call ShowBmp
+	call PrintImage
 	call Timer
 	call Timer
 	call Timer
@@ -522,7 +521,7 @@ beinaim2:
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
 	mov dx,offset loading1_image
-	call ShowBmp 
+	call PrintImage 
 	call Timer
 	call Timer
 	call Timer
@@ -834,7 +833,7 @@ proc play
 	call loading_messages
     call frame
 	mov [color], 2
-	call oblongHorizontal
+	call horizontal_oblong
 	call Timer
 	call clear_oblong_horizontal
 	mov [right2], 1
@@ -959,7 +958,7 @@ proc game_over
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
 	mov dx,offset game_over_image
-	call ShowBmp
+	call PrintImage
 	call print_score_game_over
     mov cx, 25
 wait_3_sec:	
@@ -1019,7 +1018,7 @@ menu2:
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
 	mov dx,offset menu_image
-	call ShowBmp 
+	call PrintImage 
 	mov dl, 0
 	mov dh, 0
 	mov bx, 0
@@ -1057,7 +1056,7 @@ befor_exit: ; Prints an image when the player exit the game
 	mov [BmpColSize], 320
 	mov [BmpRowSize] , 200
 	mov dx,offset quit_image
-	call ShowBmp
+	call PrintImage
     mov cx, 20
 wait_2_seco:
 	call Timer
