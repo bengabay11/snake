@@ -9,7 +9,6 @@ STACK 100h
 ; 32-bit x86 - DOS
 ; -----------------------------------------------
 
-
 MAX_BMP_WIDTH = 320
 MAX_BMP_HEIGHT = 200
 SMALL_BMP_HEIGHT = 40
@@ -27,6 +26,13 @@ DATASEG
 	messege_score2 db 'Your score is: ', 10, 13,'$' 
 	BmpFileErrorMsg db 'Error At Opening Bmp File .', 0dh, 0ah,'$'
 	HighscoreMessage db 'Best score: ', 10, 13,'$' 
+	
+	; Menu
+	PlayKey db 'w'
+	InstructionsKey db 's'
+	HighScoreKey db 'h'
+	BackKey db 'e'
+	QuitKey db 'q'
 	
 	; Game
 	AppleEaten db 0
@@ -83,11 +89,11 @@ DATASEG
 	Organge db 6
 	
 	; Direction Keys
-	Leftkey db 4Bh
-	RightKey db 4dh
-	UpKey db 48h
-	DownKey db 50h
-	EKey db 12h
+	LeftKeyCode db 4Bh
+	RightKeyCode db 4dh
+	UpKeyCode db 48h
+	DownKeyCode db 50h
+	EKeyCode db 12h
 	
 	newhigh db 0
 	score db 0
@@ -156,16 +162,14 @@ Tick:
     ret 
 endp Sleep
 
-proc ClearScreen
-	ret
-endp ClearScreen
-
 proc Sleep2Seconds
 	mov cx, 20
 wait_2_seco:
 	call Sleep
 	loop wait_2_seco
 endp Sleep2Seconds
+
+; ---------------------- BMP Procedures ----------------------
 
 proc PrintImage near
 	push cx
@@ -292,6 +296,40 @@ proc ShowBMP
 	ret
 endp ShowBMP 
 
+; ---------------------- Move Values Between Variables Procedures ----------------------
+
+proc MoveSnakeCoordinatesToCurrentCoordinates
+	pusha
+	mov bx, [SnakeX]
+	mov dx, [SnakeY]
+	mov [CurrentPixelX], bx
+	mov [CurrentPixelY], dx
+	popa
+	ret
+endp MoveSnakeCoordinatesToCurrentCoordinates
+
+proc MoveAppleCoordinatesToCurrentCoordinates
+	pusha
+	xor bx, bx
+	xor dx, dx
+	mov bl, [AppleX]
+	mov dl, [AppleY]
+	mov [CurrentPixelX], bx
+	mov [CurrentPixelY], dx
+	popa
+	ret
+endp MoveAppleCoordinatesToCurrentCoordinates
+
+proc MoveFrameCoordinatesToCurrentCoordinates
+	pusha
+	mov ax, [StartingFrameX]
+	mov bx, [StartingFramey]
+	mov [CurrentPixelX], ax
+	mov [CurrentPixelY], bx
+	popa
+	ret
+endp MoveFrameCoordinatesToCurrentCoordinates
+
 ; ---------------------- Game ----------------------
 
 proc CheckWin
@@ -315,7 +353,7 @@ win_input:
 	int 10h
 	mov ah, 1
 	int 21h
-	cmp al, 'e'
+	cmp al, [BackKey]
 	jne win_input
 	popa
 	ret
@@ -351,7 +389,7 @@ enterchar2: ; Input for exit.
 	int 10h
 	mov ah, 1
 	int 21h
-	cmp al, 'e'
+	cmp al, [BackKey]
 	jne enterchar2
 	popa
 	ret
@@ -370,19 +408,48 @@ enterchar: ; Input for exit
 	int 10h
 	mov ah, 1
 	int 21h
-	cmp al, 'e'
+	cmp al, [BackKey]
 	jne enterchar
 	popa
     ret
 endp instructions
 
 proc CheckFramePixel
+	call GetPixelColor
 	cmp al, [Blue]
 	je frame_not_overide
 	mov [IsGameOver], 1
 frame_not_overide:
 	ret
 endp CheckFramePixel
+
+; Checks if one of the pixels on the frame changed to green, and finish the game if it does
+proc CheckFrame
+    pusha
+	call MoveFrameCoordinatesToCurrentCoordinates
+    mov cx, [BoardWidth]
+shc12:
+	call CheckFramePixel
+	inc [CurrentPixelX]
+	loop shc12
+	mov cx, [BoardHeight]
+shc13:
+	call CheckFramePixel
+	inc [CurrentPixelY]
+	loop shc13
+	mov cx, [BoardWidth]
+shc14:
+	call CheckFramePixel
+	dec [CurrentPixelX]
+	loop shc14
+	mov cx, [BoardHeight]
+shc15:
+	call CheckFramePixel
+	dec [CurrentPixelY]
+	loop shc15
+	popa
+	ret
+endp CheckFrame
 
 proc CheckDisqualification
 	call CheckFrame
@@ -394,72 +461,7 @@ game_continues:
 	ret
 endp CheckDisqualification
 
-; Checks if one of the pixels on the frame changed to green, and finish the game if it does
-proc CheckFrame
-    pusha
-	call MoveFrameCoordinatesToCurrentCoordinates
-    mov cx, [BoardWidth]
-shc12:
-    call GetPixelColor
-	call CheckFramePixel
-	inc [CurrentPixelX]
-	loop shc12
-	mov cx, [BoardHeight]
-shc13:
-    call GetPixelColor
-	call CheckFramePixel
-	inc [CurrentPixelY]
-	loop shc13
-	mov cx, [BoardWidth]
-shc14:
-    call GetPixelColor
-	call CheckFramePixel
-	dec [CurrentPixelX]
-	loop shc14
-	mov cx, [BoardHeight]
-shc15:
-    call GetPixelColor
-	call CheckFramePixel
-	dec [CurrentPixelY]
-	loop shc15
-	popa
-	ret
-endp CheckFrame
-
-proc MoveSnakeCoordinatesToCurrentCoordinates
-	pusha
-	mov bx, [SnakeX]
-	mov dx, [SnakeY]
-	mov [CurrentPixelX], bx
-	mov [CurrentPixelY], dx
-	popa
-	ret
-endp MoveSnakeCoordinatesToCurrentCoordinates
-
-proc MoveAppleCoordinatesToCurrentCoordinates
-	pusha
-	xor bx, bx
-	xor dx, dx
-	mov bl, [AppleX]
-	mov dl, [AppleY]
-	mov [CurrentPixelX], bx
-	mov [CurrentPixelY], dx
-	popa
-	ret
-endp MoveAppleCoordinatesToCurrentCoordinates
-
-proc MoveFrameCoordinatesToCurrentCoordinates
-	pusha
-	mov ax, [StartingFrameX]
-	mov bx, [StartingFramey]
-	mov [CurrentPixelX], ax
-	mov [CurrentPixelY], bx
-	popa
-	ret
-endp MoveFrameCoordinatesToCurrentCoordinates
-
-; Draw horizontal rectangle
-proc horizontal_oblong
+proc DrawHorizontalSnake
     pusha
 	call MoveSnakeCoordinatesToCurrentCoordinates
 	mov ax, [SnakeWidth]
@@ -481,10 +483,9 @@ shc2:
 	sub [CurrentPixelY], bx
 	popa
     ret
-endp horizontal_oblong
+endp DrawHorizontalSnake
 
-; Draw vertical rectangle
-proc vertical_oblong
+proc DrawVerticalSnake
     pusha
 	call MoveSnakeCoordinatesToCurrentCoordinates
 	mov ax, [SnakeWidth]
@@ -506,10 +507,8 @@ shc4:
 	sub [CurrentPixelX], bx
 	popa
     ret
-endp vertical_oblong
+endp DrawVerticalSnake
 
-; Draw an appple (5X5 red pixels)
-; Draw an appple (5X5 red pixels)
 proc DrawApple
     pusha
 	call MoveAppleCoordinatesToCurrentCoordinates
@@ -536,7 +535,7 @@ proc clear_oblong_vertical
     pusha
 	mov al, [Black]
 	mov [CurrentPixelColor], al
-	call vertical_oblong
+	call DrawVerticalSnake
 	popa
 	ret
 endp clear_oblong_vertical
@@ -546,13 +545,13 @@ proc clear_oblong_horizontal
     pusha
 	mov al, [Black]
 	mov [CurrentPixelColor], al
-	call horizontal_oblong
+	call DrawHorizontalSnake
 	popa
 	ret
 endp clear_oblong_horizontal
 
 ; Draw a blue frame
-proc frame
+proc DrawFrame
     pusha
 	mov al, [Blue]
 	mov [CurrentPixelColor], al
@@ -582,7 +581,7 @@ shc11:
 	loop shc11
 	popa
     ret
-endp frame
+endp DrawFrame
 
 proc IncreaseSnake
 	ret
@@ -595,7 +594,7 @@ proc MoveSnakeUp
 	mov [CurrentPixelColor], al
 	mov bx, [SnakeMovementDistance]
     sub [SnakeY], bx
-	call vertical_oblong
+	call DrawVerticalSnake
 	popa
 	ret
 endp MoveSnakeUp
@@ -607,7 +606,7 @@ proc MoveSnakeDown
 	mov [CurrentPixelColor], al
 	mov bx, [SnakeMovementDistance]
 	add [SnakeY], bx
-	call vertical_oblong
+	call DrawVerticalSnake
 	popa
 	ret
 endp MoveSnakeDown
@@ -619,7 +618,7 @@ proc MoveSnakeRight
 	mov [CurrentPixelColor], al
 	mov bx, [SnakeMovementDistance]
 	add [SnakeX], bx
-	call horizontal_oblong
+	call DrawHorizontalSnake
 	popa
     ret
 endp MoveSnakeRight
@@ -631,7 +630,7 @@ proc MoveSnakeLeft
 	mov [CurrentPixelColor], al
 	mov bx, [SnakeMovementDistance]
 	sub [SnakeX], bx
-	call horizontal_oblong
+	call DrawHorizontalSnake
 	popa
 	ret
 endp MoveSnakeLeft
@@ -757,7 +756,6 @@ finish_delete_snake:
 	ret
 endp DeleteSnake
 
-; The procedure is incharge of the snake's movement
 proc MoveSnake
     pusha
 check_up:
@@ -814,35 +812,35 @@ proc GetSnakeMovementInput
 	jne get_snake_movement_end
 	mov [KeyPressed], 0
 check_up_direction:
-	cmp al, [UpKey] ; Checks if key up is pressed
+	cmp al, [UpKeyCode] ; Checks if key up is pressed
 	jne check_left_direction
 	cmp [IsDown], 1 ; Checks whether the snake is on his way down, and if it does, the program prevent it from going up
 	je get_snake_movement_end
 	call ResetDirections
 	mov [IsUp], 1
 check_left_direction:	
-	cmp al, [Leftkey] ; Checks if key left is pressed
+	cmp al, [LeftKeyCode] ; Checks if key left is pressed
 	jne check_down_direction
 	cmp [IsRight], 1 ; Checks whether the snake is on his way right, and if it does, the program prevent it from going left
 	je get_snake_movement_end
 	call ResetDirections
 	mov [IsLeft], 1
 check_down_direction:
-	cmp al, [DownKey] ; Checks if key down is pressed
+	cmp al, [DownKeyCode] ; Checks if key down is pressed
 	jne check_right_direction
 	cmp [IsUp], 1 ; Checks whether the snake is on his way up, and if it does, the program prevent it from going down
 	je get_snake_movement_end
 	call ResetDirections
 	mov [IsDown], 1
 check_right_direction:
-	cmp al, [RightKey] ; Checks if key right is pressed
+	cmp al, [RightKeyCode] ; Checks if key right is pressed
 	jne check_back_key
 	cmp [IsLeft], 1 ; Checks whether the snake is on his way left, and if it does, the program prevent it from going right
 	je get_snake_movement_end
 	call ResetDirections
 	mov [IsRight], 1
 check_back_key:
-	cmp al , [EKey]
+	cmp al , [EKeyCode]
 	jne get_snake_movement_end
 	mov [BackToMenu], 1
 get_snake_movement_end:
@@ -852,10 +850,10 @@ endp GetSnakeMovementInput
 proc InitBoard
 	pusha
 	call SetGraphicMode
-    call frame
+    call DrawFrame
 	mov bl, [Green]
 	mov [CurrentPixelColor], bl
-	call horizontal_oblong
+	call DrawHorizontalSnake
 	mov [IsRight], 1
 	call DrawRandomApple
 	popa
@@ -968,13 +966,13 @@ menu_loop:
 	call InitMenu
 get_input_label:
 	call GetInput
-	cmp al, 'w'
+	cmp al, [PlayKey]
 	je play_label
-	cmp al, 's'
+	cmp al, [InstructionsKey]
 	je instructions_label
-	cmp al, 'h'
+	cmp al, [HighScoreKey]
 	je highscore_label
-	cmp al, 'q'
+	cmp al, [QuitKey]
 	je exit_label
 	jmp get_input_label
 play_label:
@@ -993,7 +991,7 @@ exit_label:
 endp Menu
 
 start:
-    mov ax, @data
+	mov ax, @data
 	mov ds, ax	
 	
 	call Menu
