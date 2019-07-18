@@ -15,12 +15,14 @@ SMALL_BMP_HEIGHT = 40
 SMALL_BMP_WIDTH = 40
 
 DATASEG
+
 	; General
 	CurrentPixelX dw ?
 	CurrentPixelY dw ?
 	CurrentPixelColor db ?
 	Clock equ es:6ch
 	ErrorFile db 0
+	
 	; Messsages
 	messege_score db 'SCORE: ', 10, 13,'$' 
 	messege_score2 db 'Your score is: ', 10, 13,'$' 
@@ -33,10 +35,13 @@ DATASEG
 	HighScoreKey db 'h'
 	BackKey db 'e'
 	QuitKey db 'q'
+	BackToMenu db ?
 	
 	; Game
 	AppleEaten db 0
 	IsGameOver db ?
+	CurrentScore db 0
+	newhigh db 0
 	MaxScore db 9
 	KeyPressed db 0
 	BoardHeight dw 170
@@ -72,16 +77,13 @@ DATASEG
 	
 	; Images
 	menu_image db 'snake/images/Menu.bmp',0
-	loading1_image db 'snake/images/Loading1.bmp', 0
-	loading2_image db 'snake/images/Loading2.bmp', 0
-	loading3_image db 'snake/images/Loading3.bmp', 0
 	instructions_image db 'snake/images/Instruc.bmp',0
 	game_over_image db 'snake/images/GameOver.bmp',0
 	quit_image db 'snake/images/Quit.bmp',0
 	highscore_image db 'snake/images/HScore.bmp',0
 	win_image db 'snake/images/Win.bmp',0
 	
-	; Colors
+	; Pixel Colors
 	Black db 0
 	Blue db 1
 	Green db 2
@@ -94,12 +96,6 @@ DATASEG
 	UpKeyCode db 48h
 	DownKeyCode db 50h
 	EKeyCode db 12h
-	
-	newhigh db 0
-	score db 0
-	random_number db 0
-	random_number2 db 0
-	BackToMenu db ?
 	
 CODESEG
 
@@ -335,7 +331,7 @@ endp MoveFrameCoordinatesToCurrentCoordinates
 proc CheckWin
 	pusha
 	mov al, [MaxScore]
-	cmp al, [score]
+	cmp al, [CurrentScore]
 	ja not_win
 	call Win
 not_win:
@@ -651,7 +647,7 @@ proc PrintScoreGameOver
 	mov bx, 0
 	mov ah, 2
 	int 10h
-	mov dl, [score]
+	mov dl, [CurrentScore]
     add dl, 30h 
     mov ah, 2
     int 21h
@@ -675,7 +671,7 @@ proc PrintScore
 	mov bx, 0
 	mov ah, 2
 	int 10h
-	mov dl, [score]	
+	mov dl, [CurrentScore]	
     add dl, 30h 
     mov ah, 2
     int 21h
@@ -782,7 +778,7 @@ endp MoveSnake
 proc HandleAppleEaten
 	call DeleteApple
 	call DrawRandomApple
-	inc [score]
+	inc [CurrentScore]
 	call IncreaseSnake
 	ret
 endp HandleAppleEaten
@@ -862,7 +858,7 @@ endp InitBoard
 
 proc InitGameVariables
 	mov [BackToMenu], 0
-	mov [score], 0
+	mov [CurrentScore], 0
 	mov [newhigh], 0
 	mov [IsGameOver], 0
 	ret
@@ -942,7 +938,7 @@ proc PrintQuitImage
 endp PrintQuitImage
 
 proc CheckHighscore
-	mov al, [score]
+	mov al, [CurrentScore]
 	cmp al, [newhigh] ; Compare between the highscore and the current score
 	jbe no_change
 	mov [newhigh], al ; Insert the current score to the highscore variable
