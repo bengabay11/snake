@@ -24,8 +24,8 @@ DATASEG
 	ErrorFile db 0
 	
 	; Messsages
-	messege_score db 'SCORE: ', 10, 13,'$' 
-	messege_score2 db 'Your score is: ', 10, 13,'$' 
+	ScoreMessage db 'SCORE: ', 10, 13,'$' 
+	ScoreMessegeGameOver db 'Your score is: ', 10, 13,'$' 
 	BmpFileErrorMsg db 'Error At Opening Bmp File .', 0dh, 0ah,'$'
 	HighscoreMessage db 'Best score: ', 10, 13,'$' 
 	
@@ -41,22 +41,25 @@ DATASEG
 	AppleEaten db 0
 	IsGameOver db ?
 	CurrentScore db 0
-	newhigh db 0
+	HighScore db 0
 	MaxScore db 9
 	KeyPressed db 0
 	BoardHeight dw 170
 	BoardWidth dw 300
 	SnakeX dw 160
 	SnakeY dw 100
-	SnakeWidth dw 5
-	SnakeHeight dw 25
-	AppleX db ?
-	AppleY db ?
+	BaseSnakeWidth dw 5
+	BaseSnakeHeight dw 25
+	SnakeWidth dw ?
+	SnakeHeight dw ?
+	AppleX dw ?
+	AppleY dw ?
 	AppleWidth dw 5
 	AppleHeight dw 5
 	StartingFrameX dw 10
 	StartingFramey dw 10
 	SnakeMovementDistance dw 5
+	SnakeIncreamentSize dw 2
 	
 	;Snake Movement
 	IsUp db 0
@@ -76,12 +79,12 @@ DATASEG
 	ScreenLineMax db MAX_BMP_WIDTH dup (0)  ; One Color line read buffer	
 	
 	; Images
-	menu_image db 'snake/images/Menu.bmp',0
-	instructions_image db 'snake/images/Instruc.bmp',0
-	game_over_image db 'snake/images/GameOver.bmp',0
-	quit_image db 'snake/images/Quit.bmp',0
-	highscore_image db 'snake/images/HScore.bmp',0
-	win_image db 'snake/images/Win.bmp',0
+	MenuImage db 'snake/images/Menu.bmp',0
+	InstructionsImage db 'snake/images/Instruc.bmp',0
+	GameOverImage db 'snake/images/GameOver.bmp',0
+	QuitImage db 'snake/images/Quit.bmp',0
+	HighscoreImage db 'snake/images/HScore.bmp',0
+	WinImage db 'snake/images/Win.bmp',0
 	
 	; Pixel Colors
 	Black db 0
@@ -115,7 +118,6 @@ proc GetInput
 	ret
 endp
 
-; Draws pixel to the screen
 proc DrawPixel
     pusha
     mov bh,0h
@@ -130,15 +132,15 @@ endp DrawPixel
 
 proc GetPixelColor
 	pusha
-	mov bh,0h
     mov cx, [CurrentPixelX]
     mov dx, [CurrentPixelY]
     mov ah, 0Dh
     int 10h ; return al the pixel value read
+	mov [CurrentPixelColor], al
+	popa
 	ret
 endp GetPixelColor
 
-; Wait 0.5 seconds
 proc Sleep
     pusha
     mov ax, 40h
@@ -304,12 +306,20 @@ proc MoveSnakeCoordinatesToCurrentCoordinates
 	ret
 endp MoveSnakeCoordinatesToCurrentCoordinates
 
+proc MoveSnakeBaseCoordinatesToCurrentCoordinates
+	pusha
+	mov bx, [BaseSnakeWidth]
+	mov dx, [BaseSnakeHeight]
+	mov [SnakeWidth], bx
+	mov [SnakeHeight], dx
+	popa
+	ret
+endp MoveSnakeBaseCoordinatesToCurrentCoordinates
+
 proc MoveAppleCoordinatesToCurrentCoordinates
 	pusha
-	xor bx, bx
-	xor dx, dx
-	mov bl, [AppleX]
-	mov dl, [AppleY]
+	mov bx, [AppleX]
+	mov dx, [AppleY]
 	mov [CurrentPixelX], bx
 	mov [CurrentPixelY], dx
 	popa
@@ -325,6 +335,16 @@ proc MoveFrameCoordinatesToCurrentCoordinates
 	popa
 	ret
 endp MoveFrameCoordinatesToCurrentCoordinates
+
+proc MoveCurrentCoordinatesToSnakeCoordinates
+	pusha
+	mov ax, [CurrentPixelX]
+	mov bx, [CurrentPixelY]
+	mov [SnakeX], ax
+	mov [SnakeY], bx
+	popa
+	ret
+endp MoveCurrentCoordinatesToSnakeCoordinates
 
 ; ---------------------- Game ----------------------
 
@@ -342,7 +362,7 @@ endp CheckWin
 proc Win
 	pusha
 	mov [BackToMenu], 1
-	mov dx,offset win_image
+	mov dx,offset WinImage
 	call PrintImage
 win_input:
 	mov ah, 2
@@ -356,9 +376,9 @@ win_input:
 endp Win
 
 ; Prints an image with the highscore of the player
-proc Highscore
+proc ShowHighscore
 	pusha
-	mov dx,offset highscore_image
+	mov dx,offset HighscoreImage
 	call PrintImage
 	mov dl, 11
 	mov dh, 4
@@ -373,45 +393,40 @@ proc Highscore
 	mov bx, 0
 	mov ah, 2
 	int 10h
-	mov dl, [newhigh] ; same as: mov dl, 58h
+	mov dl, [HighScore] ; same as: mov dl, 58h
     add dl, 30h 
     mov ah, 2
     int 21h
-enterchar2: ; Input for exit.
-	mov dl, 0
-	mov dh, 0
-	mov bx, 0
+highscore_exit_input: ; Input for exit.
 	mov ah, 2
 	int 10h
 	mov ah, 1
 	int 21h
 	cmp al, [BackKey]
-	jne enterchar2
+	jne highscore_exit_input
 	popa
 	ret
-endp highscore
+endp ShowHighscore
 
 ; Prints the instructions of the game
 proc Instructions
     pusha
-	mov dx,offset instructions_image
+	mov dx,offset InstructionsImage
 	call PrintImage 
-enterchar: ; Input for exit
-	mov dl, 0
-	mov dh, 0
-	mov bx, 0
+instructions_exit_input: ; Input for exit.
 	mov ah, 2
 	int 10h
 	mov ah, 1
 	int 21h
 	cmp al, [BackKey]
-	jne enterchar
+	jne instructions_exit_input
 	popa
     ret
 endp instructions
 
 proc CheckFramePixel
 	call GetPixelColor
+	mov al, [CurrentPixelColor]
 	cmp al, [Blue]
 	je frame_not_overide
 	mov [IsGameOver], 1
@@ -424,25 +439,25 @@ proc CheckFrame
     pusha
 	call MoveFrameCoordinatesToCurrentCoordinates
     mov cx, [BoardWidth]
-shc12:
+check_frame_upper_row:
 	call CheckFramePixel
 	inc [CurrentPixelX]
-	loop shc12
+	loop check_frame_upper_row
 	mov cx, [BoardHeight]
-shc13:
+check_frame_right_column:
 	call CheckFramePixel
 	inc [CurrentPixelY]
-	loop shc13
+	loop check_frame_right_column
 	mov cx, [BoardWidth]
-shc14:
+check_frame_bottom_row:
 	call CheckFramePixel
 	dec [CurrentPixelX]
-	loop shc14
+	loop check_frame_bottom_row
 	mov cx, [BoardHeight]
-shc15:
+check_frame_left_column:
 	call CheckFramePixel
 	dec [CurrentPixelY]
-	loop shc15
+	loop check_frame_left_column
 	popa
 	ret
 endp CheckFrame
@@ -461,20 +476,20 @@ proc DrawHorizontalSnake
     pusha
 	call MoveSnakeCoordinatesToCurrentCoordinates
 	mov ax, [SnakeWidth]
-shc1:
+horizontal_snake_row:
 	mov cx, [SnakeHeight]
-shc2:
+horizontal_snake_column:
     push cx
 	inc [CurrentPixelX]
 	call DrawPixel
 	pop cx
-	loop shc2
+	loop horizontal_snake_column
 	inc [CurrentPixelY]
 	mov bx, [SnakeHeight]
 	sub [CurrentPixelX], bx
 	dec ax
 	cmp ax, 0
-	jne shc1
+	jne horizontal_snake_row
 	mov bx, [SnakeWidth]
 	sub [CurrentPixelY], bx
 	popa
@@ -485,20 +500,20 @@ proc DrawVerticalSnake
     pusha
 	call MoveSnakeCoordinatesToCurrentCoordinates
 	mov ax, [SnakeWidth]
-shc3:
+vertical_snake_row:
 	mov cx, [SnakeHeight]
-shc4:
+vertical_snake_column:
     push cx
 	inc [CurrentPixelY]
 	call DrawPixel
 	pop cx
-	loop shc4
+	loop vertical_snake_column
 	inc [CurrentPixelX]
 	mov bx, [SnakeHeight]
 	sub [CurrentPixelY], bx
 	dec ax
 	cmp ax, 0
-	jne shc3
+	jne vertical_snake_row
 	mov bx, [SnakeWidth]
 	sub [CurrentPixelX], bx
 	popa
@@ -512,13 +527,12 @@ proc DrawApple
 new_apple_row:
 	mov cx, [AppleWidth]
 new_apple_column:
-    push cx
-	inc [CurrentPixelY]
 	call DrawPixel
-	pop cx
+	inc [CurrentPixelY]
 	loop new_apple_column
 	inc [CurrentPixelX]
-	sub [CurrentPixelY], 5
+	mov bx, [AppleHeight]
+	sub [CurrentPixelY], bx
 	dec ax
 	cmp ax, 0
 	jne new_apple_row
@@ -527,24 +541,24 @@ new_apple_column:
 endp DrawApple
 
 ; Clear a vertical rectangle
-proc clear_oblong_vertical
+proc ClearVerticalOblong
     pusha
 	mov al, [Black]
 	mov [CurrentPixelColor], al
 	call DrawVerticalSnake
 	popa
 	ret
-endp clear_oblong_vertical
+endp ClearVerticalOblong
 
 ; Clear a horizontal rectangle
-proc clear_oblong_horizontal
+proc ClearHorizontalOblong
     pusha
 	mov al, [Black]
 	mov [CurrentPixelColor], al
 	call DrawHorizontalSnake
 	popa
 	ret
-endp clear_oblong_horizontal
+endp ClearHorizontalOblong
 
 ; Draw a blue frame
 proc DrawFrame
@@ -556,36 +570,40 @@ proc DrawFrame
 	mov [CurrentPixelX], ax
 	mov [CurrentPixelY], bx
     mov cx, [BoardWidth]
-shc8:
+frame_upper_row:
     call DrawPixel
 	inc [CurrentPixelX]
-	loop shc8
+	loop frame_upper_row
 	mov cx, [BoardHeight]
-shc9:
+frame_right_column:
     call DrawPixel
 	inc [CurrentPixelY]
-	loop shc9
+	loop frame_right_column
 	mov cx, [BoardWidth]
-shc10:
+frame_bottom_row:
     call DrawPixel
 	dec [CurrentPixelX]
-	loop shc10
+	loop frame_bottom_row
 	mov cx, [BoardHeight]
-shc11:
+frame_left_column:
     call DrawPixel
 	dec [CurrentPixelY]
-	loop shc11
+	loop frame_left_column
 	popa
     ret
 endp DrawFrame
 
 proc IncreaseSnake
+	pusha
+	mov ax, [SnakeIncreamentSize]
+	add [SnakeHeight], ax
+	popa
 	ret
 endp IncreaseSnake
 
 proc MoveSnakeUp
     pusha
-	call clear_oblong_vertical
+	call ClearVerticalOblong
 	mov al, [Green]
 	mov [CurrentPixelColor], al
 	mov bx, [SnakeMovementDistance]
@@ -597,7 +615,7 @@ endp MoveSnakeUp
 
 proc MoveSnakeDown
     pusha
-	call clear_oblong_vertical
+	call ClearVerticalOblong
 	mov al, [Green]
 	mov [CurrentPixelColor], al
 	mov bx, [SnakeMovementDistance]
@@ -609,7 +627,7 @@ endp MoveSnakeDown
 
 proc MoveSnakeRight
     pusha
-	call clear_oblong_horizontal
+	call ClearHorizontalOblong
 	mov al, [Green]
 	mov [CurrentPixelColor], al
 	mov bx, [SnakeMovementDistance]
@@ -621,7 +639,7 @@ endp MoveSnakeRight
 
 proc MoveSnakeLeft
     pusha
-	call clear_oblong_horizontal
+	call ClearHorizontalOblong
 	mov al, [Green]
 	mov [CurrentPixelColor], al
 	mov bx, [SnakeMovementDistance]
@@ -631,7 +649,61 @@ proc MoveSnakeLeft
 	ret
 endp MoveSnakeLeft
 
-; Checks whether the player disqalified. if he does, the procedure show the relevant message
+proc FixUpMovement
+	pusha
+	mov ax, [SnakeHeight]
+	cmp [IsLeft], 1
+	jne fix_up_check_right
+	sub [SnakeY], ax
+fix_up_check_right:
+	cmp [IsRight], 1
+	jne exit_fix_up
+	add [SnakeX], ax
+	sub [SnakeY], ax
+exit_fix_up:
+	popa
+	ret
+endp FixUpMovement
+
+proc FixDownMovement
+	pusha
+	cmp [IsRight], 1
+	jne exit_fix_down
+	mov ax, [SnakeHeight]
+	add [SnakeX], ax
+exit_fix_down:
+	popa
+	ret
+endp FixDownMovement
+
+proc FixRightMovement
+	pusha
+	mov ax, [SnakeHeight]
+	cmp [IsUp], 1
+	jne fix_right_check_down
+	add [SnakeX], ax
+fix_right_check_down:
+	cmp [IsDown], 1
+	jne exit_fix_right
+	add [SnakeY], ax
+exit_fix_right:
+	popa
+	ret
+endp FixRightMovement
+
+proc FixLeftMovement
+	pusha
+	mov ax, [SnakeHeight]
+	sub [SnakeX], ax
+fix_left_check_right:
+	cmp [IsDown], 1
+	jne exit_fix_left
+	add [SnakeY], ax
+exit_fix_left:
+	popa
+	ret
+endp FixLeftMovement
+
 proc PrintScoreGameOver
 	pusha
 	mov dl, 11
@@ -639,7 +711,7 @@ proc PrintScoreGameOver
 	mov bx, 0
 	mov ah, 2
 	int 10h
-	mov dx, offset messege_score2
+	mov dx, offset ScoreMessegeGameOver
 	mov ah, 9h
 	int 21h
 	mov dl, 26
@@ -663,7 +735,7 @@ proc PrintScore
 	mov bx, 0
 	mov ah, 2
 	int 10h
-	mov dx, offset messege_score
+	mov dx, offset ScoreMessage
 	mov ah, 9h
 	int 21h
 	mov dl, 10
@@ -692,37 +764,43 @@ proc DrawRandomApple
 endp DrawRandomApple
 
 proc CheckApplePixel
+	pusha
+	call GetPixelColor
+	mov al, [CurrentPixelColor]
 	cmp al, [Red]
-	je apple_not_eaten
+	je apple_pixel_is_red
 	mov [AppleEaten], 1
-apple_not_eaten:
+apple_pixel_is_red:
+	popa
 	ret
 endp CheckApplePixel
 
-; Checks if the apple eaten by the snake
-proc CheckApple
+proc CheckAppleEaten
 	pusha
+	call MoveAppleCoordinatesToCurrentCoordinates
 	mov ax, [AppleHeight]
-shc55:
+check_apple_column:
 	mov cx, [AppleWidth]
-shc66:
-    push cx
-	mov bl, [AppleX]
-	mov dl, [AppleY]
-	mov [CurrentPixelX], bx
-	mov [CurrentPixelY], dx
-	call GetPixelColor
+check_apple_row:
 	call CheckApplePixel
 	inc [CurrentPixelY]
-	pop cx
-	loop shc66
+	loop check_apple_row
 	inc [CurrentPixelX]
 	sub [CurrentPixelY], 5
 	dec ax
 	cmp ax, 0
-	jne shc55
+	jne check_apple_column
 	popa
     ret
+endp CheckAppleEaten
+
+proc CheckApple
+	call CheckAppleEaten
+	cmp [AppleEaten], 1
+	jne apple_not_eaten
+	call HandleAppleEaten
+apple_not_eaten:
+	ret
 endp CheckApple
 
 proc DeleteApple
@@ -735,19 +813,19 @@ endp DeleteApple
 proc DeleteSnake
 	cmp [IsUp], 1
 	jne delete_snake_check_down
-	call clear_oblong_vertical
+	call ClearVerticalOblong
 delete_snake_check_down:
     cmp [IsDown], 1
 	jne delete_snake_check_right
-	call clear_oblong_vertical
+	call ClearVerticalOblong
 delete_snake_check_right:
     cmp [IsRight], 1
 	jne delete_snake_check_left
-	call clear_oblong_horizontal
+	call ClearHorizontalOblong
 delete_snake_check_left:
     cmp [IsLeft], 1
 	jne finish_delete_snake
-	call clear_oblong_horizontal
+	call ClearHorizontalOblong
 finish_delete_snake:
 	ret
 endp DeleteSnake
@@ -780,6 +858,7 @@ proc HandleAppleEaten
 	call DrawRandomApple
 	inc [CurrentScore]
 	call IncreaseSnake
+	mov [AppleEaten], 0
 	ret
 endp HandleAppleEaten
 
@@ -810,6 +889,7 @@ proc GetSnakeMovementInput
 check_up_direction:
 	cmp al, [UpKeyCode] ; Checks if key up is pressed
 	jne check_left_direction
+	call FixUpMovement
 	cmp [IsDown], 1 ; Checks whether the snake is on his way down, and if it does, the program prevent it from going up
 	je get_snake_movement_end
 	call ResetDirections
@@ -817,6 +897,7 @@ check_up_direction:
 check_left_direction:	
 	cmp al, [LeftKeyCode] ; Checks if key left is pressed
 	jne check_down_direction
+	call FixLeftMovement
 	cmp [IsRight], 1 ; Checks whether the snake is on his way right, and if it does, the program prevent it from going left
 	je get_snake_movement_end
 	call ResetDirections
@@ -824,6 +905,7 @@ check_left_direction:
 check_down_direction:
 	cmp al, [DownKeyCode] ; Checks if key down is pressed
 	jne check_right_direction
+	call FixDownMovement
 	cmp [IsUp], 1 ; Checks whether the snake is on his way up, and if it does, the program prevent it from going down
 	je get_snake_movement_end
 	call ResetDirections
@@ -831,6 +913,7 @@ check_down_direction:
 check_right_direction:
 	cmp al, [RightKeyCode] ; Checks if key right is pressed
 	jne check_back_key
+	call FixRightMovement
 	cmp [IsLeft], 1 ; Checks whether the snake is on his way left, and if it does, the program prevent it from going right
 	je get_snake_movement_end
 	call ResetDirections
@@ -857,10 +940,14 @@ proc InitBoard
 endp InitBoard
 
 proc InitGameVariables
+	call ResetDirections
+	call MoveSnakeBaseCoordinatesToCurrentCoordinates
 	mov [BackToMenu], 0
 	mov [CurrentScore], 0
-	mov [newhigh], 0
 	mov [IsGameOver], 0
+	mov [SnakeX], 160
+	mov [SnakeY], 100
+	mov [AppleEaten], 0
 	ret
 endp InitGameVariables
 
@@ -871,8 +958,8 @@ game_loop:
 	call DeleteSnake
 	call GetSnakeMovementInput
 	call MoveSnake
-	; call CheckApple
-	; call CheckDisqualification
+	call CheckApple
+	call CheckDisqualification
 	call CheckWin
 	call PrintScore
 	call Sleep
@@ -884,7 +971,7 @@ endp Play
 proc GameOver
     pusha
 	mov [BackToMenu], 1
-	mov dx,offset game_over_image
+	mov dx,offset GameOverImage
 	call PrintImage
 	call PrintScoreGameOver
     mov cx, 25
@@ -901,14 +988,15 @@ proc GenerateRandomAppleX
     mov es, ax
     mov cx, 10
     mov bx, 0
-RandLoop:
+random_loop_apple_x:
     mov ax, [Clock] 
     mov ah, [byte cs:bx]
     xor al, ah 
     and al, 11111111b 
-	mov [AppleX], al
+	xor ah, ah
+	mov [AppleX], ax
 	add [AppleX], 11
-    loop RandLoop
+    loop random_loop_apple_x
 	popa
 	ret
 endp GenerateRandomAppleX
@@ -919,29 +1007,30 @@ proc GenerateRandomAppleY
     mov es, ax
     mov cx, 10
     mov bx, 0
-RandLoop2:
+random_loop_apple_y:
     mov ax, [Clock] 
     mov ah, [byte cs:bx]
     xor al, ah 
-    and al, 10011111b 
-	mov [AppleY], al
+    and al, 10011111b
+	xor ah, ah
+	mov [AppleY], ax
 	add [AppleY], 11
-    loop RandLoop2
+    loop random_loop_apple_y
 	popa
 	ret
 endp GenerateRandomAppleY
 
 proc PrintQuitImage
-	mov dx,offset quit_image
+	mov dx,offset QuitImage
 	call PrintImage
 	call Sleep2Seconds
 endp PrintQuitImage
 
 proc CheckHighscore
 	mov al, [CurrentScore]
-	cmp al, [newhigh] ; Compare between the highscore and the current score
+	cmp al, [HighScore] ; Compare between the highscore and the current score
 	jbe no_change
-	mov [newhigh], al ; Insert the current score to the highscore variable
+	mov [HighScore], al ; Insert the current score to the highscore variable
 no_change:
 	ret
 endp CheckHighscore
@@ -949,7 +1038,7 @@ endp CheckHighscore
 proc InitMenu
 	pusha
 	call SetGraphicMode
-	mov dx, offset menu_image
+	mov dx, offset MenuImage
 	call PrintImage 
 	mov ah, 2
 	int 10h
@@ -976,7 +1065,7 @@ play_label:
 	call CheckHighscore
 	jmp menu_loop
 highscore_label:
-	call Highscore
+	call ShowHighscore
 	jmp menu_loop
 instructions_label:
 	call Instructions
@@ -989,9 +1078,7 @@ endp Menu
 start:
 	mov ax, @data
 	mov ds, ax	
-	
 	call Menu
-	
 	mov ax, 2
 	int 10h
 	mov ax, 4c00h
