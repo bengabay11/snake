@@ -116,7 +116,7 @@ proc GetInput
 	mov ah, 1
 	int 21h
 	ret
-endp
+endp GetInput
 
 proc DrawPixel
     pusha
