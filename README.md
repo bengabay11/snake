@@ -1,7 +1,7 @@
 # Snake
 A snake game written in assembly for DOS
 
-[asd]: images/demo.jpg
+![Demo Image](images/demo.jpg)
 
 ### Requirements
 * DOSBox 0.74-3
